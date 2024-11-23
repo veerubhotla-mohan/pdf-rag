@@ -1,0 +1,76 @@
+service: chat-application
+
+provider:
+  name: aws
+  runtime: python3.9  # Update with your Python version
+  region: us-east-1   # Specify your preferred region
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action: 's3:*'
+          Resource: '*'
+        - Effect: Allow
+          Action:
+            - 'ec2:*'
+            - 's3:*'
+            - 'rds:*'
+            - 'lambda:*'
+            - 'bedrock:*'
+            - 'execute-api:*'
+            - 'apigateway:*'
+          Resource: '*'
+
+plugins:
+  - serverless-python-requirements
+
+
+package:
+  patterns:
+    - "!node_modules/**"
+
+custom:
+  pythonRequirements:
+    layer: true
+
+
+functions:
+  websocketHandler:
+    handler: chat_app_handler.prompt_handler  # Update with the actual path to your handler
+    layers:
+      -  Ref: PythonRequirementsLambdaLayer  # Use the generated dependency layer
+    environment:
+      MONGODB_URI:
+    events:
+      - websocket:
+          route: $connect
+      - websocket:
+          route: $disconnect
+      - websocket:
+          route: $default        # Route for default messages
+  pdfProcessorHandler:
+    handler: chat_app_handler.pdf_process_handler
+    layers:
+      - Ref: PythonRequirementsLambdaLayer
+    events:
+      - http:
+          cors: true
+          path: /pdf
+          method: post
+
+resources:
+  Resources:
+    WebSocketApi:
+      Type: AWS::ApiGatewayV2::Api
+      Properties:
+        Name: ChatWebSocketApi
+        ProtocolType: WEBSOCKET
+        RouteSelectionExpression: "$request.body.action"
+
+    WebSocketStage:
+      Type: AWS::ApiGatewayV2::Stage
+      Properties:
+        ApiId:
+          Ref: WebSocketApi
+        StageName: dev  # Update based on your stage (dev, prod, etc.)
+        AutoDeploy: true
