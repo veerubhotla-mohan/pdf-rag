@@ -1,157 +1,183 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PDF Upload and Prompt Query</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-            background-color: rgba(0,0,0,0.4);
-        }
-        .container {
-            max-width: 800px;
-            margin: auto;
-            padding: 20px;
-            background-color: #fff;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-        input[type="file"], input[type="text"], button {
-            margin: 10px 0;
-            padding: 10px;
-            width: 100%;
-            box-sizing: border-box;
-            font-size: 16px;
-        }
-        button {
-            cursor: pointer;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        .message {
-            padding: 10px;
-            margin: 10px 0;
-            background-color: #f1f1f1;
-        }
-        .loading {
-            font-style: italic;
-            color: gray;
-        }
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        background-color: rgba(0, 0, 0, 0.4);
+      }
+      .container {
+        max-width: 800px;
+        margin: auto;
+        padding: 20px;
+        background-color: #fff;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      input[type="file"],
+      input[type="text"],
+      button {
+        margin: 10px 0;
+        padding: 10px;
+        width: 100%;
+        box-sizing: border-box;
+        font-size: 16px;
+      }
+      button {
+        cursor: pointer;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      .message {
+        padding: 10px;
+        margin: 10px 0;
+        background-color: #f1f1f1;
+      }
+      .loading {
+        font-style: italic;
+        color: gray;
+      }
     </style>
-</head>
-<body>
-
+  </head>
+  <body>
     <div class="container">
-        <h1>Upload PDF and Send Prompt</h1>
-        
-        <!-- PDF Upload -->
-        <div>
-            <label for="pdf-upload">Upload your PDF:</label>
-            <input type="file" id="pdf-upload" accept="application/pdf">
-            <button id="upload-button">Upload PDF</button>
-        </div>
+      <h1>Upload PDF and Send Prompt</h1>
 
-        <div class="message" id="upload-status"></div>
+      <!-- PDF Upload -->
+      <div>
+        <label for="pdf-upload">Upload your PDF:</label>
+        <input type="file" id="pdf-upload" accept="application/pdf" />
+        <button id="upload-button">Upload PDF</button>
+      </div>
 
-        <!-- Prompt Query -->
-        <div>
-            <label for="query-prompt">Enter your query:</label>
-            <input type="text" id="query-prompt" placeholder="Ask about the PDF data">
-            <button id="send-prompt-button" disabled>Send Prompt</button>
-        </div>
+      <div class="message" id="upload-status"></div>
 
-        <div class="message" id="response-status"></div>
+      <!-- Prompt Query -->
+      <div>
+        <label for="query-prompt">Enter your query:</label>
+        <input
+          type="text"
+          id="query-prompt"
+          placeholder="Ask about the PDF data"
+        />
+        <button id="send-prompt-button" disabled>Send Prompt</button>
+      </div>
+
+      <div class="message" id="response-status"></div>
     </div>
 
     <script>
-        const pdfProcessorUrl = 'https://h46rjgs1tf.execute-api.us-east-1.amazonaws.com/dev/pdf';
-        const websocketEndpoint = 'ws://2ui1bs1wvc.execute-api.us-east-1.amazonaws.com/dev/';
+      const pdfProcessorUrl = "";
+      const websocketEndpoint =
+        "";
 
-        let websocketConnection;
+      let websocketConnection;
 
-        // Upload PDF functionality
-        document.getElementById('upload-button').addEventListener('click', async function() {
-            const fileInput = document.getElementById('pdf-upload');
-            const file = fileInput.files[0];
-            if (!file) {
-                alert('Please select a PDF file');
-                return;
+      // Upload PDF functionality
+      document
+        .getElementById("upload-button")
+        .addEventListener("click", async function () {
+          const fileInput = document.getElementById("pdf-upload");
+          const file = fileInput.files[0];
+          if (!file) {
+            alert("Please select a PDF file");
+            return;
+          }
+
+          const formData = new FormData();
+          formData.append("file", file);
+
+          try {
+            document.getElementById("upload-status").textContent =
+              "Uploading PDF...";
+            const response = await fetch(pdfProcessorUrl, {
+              method: "POST",
+              body: formData,
+              headers: {
+                "Content-Type": "application/pdf", // Correct Content-Type for a PDF file
+              },
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+              document.getElementById("upload-status").textContent =
+                "PDF uploaded and processed successfully!";
+              document.getElementById("send-prompt-button").disabled = false; // Enable prompt button
+            } else {
+              document.getElementById(
+                "upload-status"
+              ).textContent = `Error: ${data.message}`;
             }
-
-            const formData = new FormData();
-            formData.append('file', file);
-
-            try {
-                document.getElementById('upload-status').textContent = 'Uploading PDF...';
-                const response = await fetch(pdfProcessorUrl, {
-                    method: 'POST',
-                    body: formData,
-                });
-
-                const data = await response.json();
-                if (response.ok) {
-                    document.getElementById('upload-status').textContent = 'PDF uploaded and processed successfully!';
-                    document.getElementById('send-prompt-button').disabled = false; // Enable prompt button
-                } else {
-                    document.getElementById('upload-status').textContent = `Error: ${data.message}`;
-                }
-            } catch (error) {
-                document.getElementById('upload-status').textContent = `Error: ${error.message}`;
-            }
+          } catch (error) {
+            document.getElementById(
+              "upload-status"
+            ).textContent = `Error: ${error.message}`;
+          }
         });
 
-        // Set up WebSocket connection
-        function initializeWebSocket() {
-            websocketConnection = new WebSocket(websocketEndpoint);
+      // Set up WebSocket connection
+      function initializeWebSocket() {
+        websocketConnection = new WebSocket(websocketEndpoint);
 
-            websocketConnection.onopen = function() {
-                console.log('WebSocket connection established');
-            };
-
-            websocketConnection.onmessage = function(event) {
-                const response = JSON.parse(event.data);
-                document.getElementById('response-status').textContent = `Response: ${response.answer}`;
-            };
-
-            websocketConnection.onerror = function(error) {
-                document.getElementById('response-status').textContent = `WebSocket error: ${error.message}`;
-            };
-
-            websocketConnection.onclose = function() {
-                console.log('WebSocket connection closed');
-                setTimeout(initializeWebSocket, 5000); // Retry connection after 5 seconds
-            };
-        }
-
-        // Send query prompt via WebSocket
-        document.getElementById('send-prompt-button').addEventListener('click', function() {
-            const query = document.getElementById('query-prompt').value;
-            if (!query) {
-                alert('Please enter a query');
-                return;
-            }
-
-            if (!websocketConnection || websocketConnection.readyState !== WebSocket.OPEN) {
-                alert('WebSocket connection is not open');
-                return;
-            }
-
-            const message = JSON.stringify({ prompt: query });
-            websocketConnection.send(message);
-
-            document.getElementById('response-status').textContent = 'Sending query...';
-        });
-
-        // Initialize WebSocket on page load
-        window.onload = function() {
-            initializeWebSocket();
+        websocketConnection.onopen = function () {
+          console.log("WebSocket connection established");
         };
-    </script>
 
-</body>
+        websocketConnection.onmessage = function (event) {
+          const response = JSON.parse(event.data);
+          document.getElementById(
+            "response-status"
+          ).textContent = `Response: ${response.answer}`;
+        };
+
+        websocketConnection.onerror = function (error) {
+          document.getElementById(
+            "response-status"
+          ).textContent = `WebSocket error: ${error.message}`;
+        };
+
+        websocketConnection.onclose = function () {
+          console.log("WebSocket connection closed");
+          setTimeout(initializeWebSocket, 5000); // Retry connection after 5 seconds
+        };
+      }
+
+      // Send query prompt via WebSocket
+      document
+        .getElementById("send-prompt-button")
+        .addEventListener("click", function () {
+          const query = document.getElementById("query-prompt").value;
+          if (!query) {
+            alert("Please enter a query");
+            return;
+          }
+
+          if (
+            !websocketConnection ||
+            websocketConnection.readyState !== WebSocket.OPEN
+          ) {
+            alert("WebSocket connection is not open");
+            return;
+          }
+
+          const message = JSON.stringify({ prompt: query });
+          websocketConnection.send(message);
+
+          document.getElementById("response-status").textContent =
+            "Sending query...";
+        });
+
+      // Initialize WebSocket on page load
+      window.onload = function () {
+        initializeWebSocket();
+      };
+    </script>
+  </body>
 </html>
