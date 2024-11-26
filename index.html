@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chatbot UI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #d3e0ff;
+      }
+      .container {
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-top: 50px;
+      }
+      .container h1 {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .input-group {
+        display: flex;
+      }
+      .input-group input[type="text"] {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 16px;
+        outline: none;
+      }
+      .input-group button {
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        margin-left: 10px;
+        outline: none;
+      }
+      .input-group button:hover {
+        background-color: #0056b3;
+      }
+      .message-container {
+        margin-bottom: 10px;
+        background-color: #0056b3;
+      }
+      .user-message {
+        background-color: #7286D3;
+        color: #ffff;
+        padding: 10px;
+        border-radius: 8px;
+        clear: both;
+        float: left;
+        max-width: 70%;
+        margin-top: 30px;
+      }
+      .bot-message {
+        background-color: #f0f0f0;
+        padding: 10px;
+        border-radius: 8px;
+        clear: both;
+        float: right;
+        max-width: 70%;
+      }
+      #loadingMessage {
+        background-color: #f0f0f0;
+        padding: 10px;
+        border-radius: 8px;
+        clear: both;
+        float: right;
+        max-width: 70%;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container bg-info">
+      <h3 class="d-flex justify-content-between align-items-center">Welcome, Ask about your PDFs here! </h3>
+      <div class="input-group">
+          <input type="text" id="userInput" placeholder="Enter your message..." />
+          <button id="submitButton">Send</button>
+      </div>
+      <div id="chatContainer" class="bg-dark"></div>
+      <div id="loadingMessage" style="display: none;">Generating response...</div>
+
+  </div>
+
+  </div>
+
+
+    <script>
+      console.log(sessionStorage)
+      if (sessionStorage.getItem('authenticated') == "false") {
+            // If not authenticated, redirect to the sign-in page
+            window.location.href = 'signin.html';
+        }
+
+      function logout(){
+        sessionStorage.setItem('authenticated', "false")
+        window.location.href = 'signin.html';
+      }
+
+      // Connect to the WebSocket backend
+      let messages_count = 0;
+      let messageElement = null;
+
+      const socket = new WebSocket(
+        ""
+      );
+
+      // Handle WebSocket connection opened
+      socket.onopen = function (event) {
+        console.log("WebSocket connection opened");
+      };
+
+      // Handle WebSocket messages received
+      socket.onmessage = function (response) {
+        console.log("Message recevied", response);
+        if (!response.data.includes("Endpoint request timed out")) {
+          console.log(response.data)
+          displayMessage(response.data, "bot");
+        }
+      };
+
+      // Handle WebSocket errors
+      socket.onerror = function (error) {
+        console.error("WebSocket error:", error);
+      };
+
+      // Handle WebSocket connection closed
+      socket.onclose = function (event) {
+        console.log("WebSocket connection closed");
+      };
+
+      // Function to send user's message to the backend
+      function sendMessage() {
+        const userInput = document.getElementById("userInput").value;
+        console.log(userInput)
+        document.getElementById('loadingMessage').style.display = 'block';
+
+        const message = {
+          query: userInput,
+        };
+        socket.send(JSON.stringify(message));
+        document.getElementById("userInput").value = "";
+        displayMessage(message.query, "user");
+      }
+
+      // Function to display messages in the UI
+      function displayMessage(message, sender) {
+        const chatContainer = document.getElementById("chatContainer");
+        if (sender === "user") {
+          messageElement = document.createElement("div");
+          messageElement.classList.add("message-container");
+          messageElement.innerHTML =
+            '<div class="user-message">' + message + "</div>";
+          messages_count = messages_count + 1;
+        } else {
+          document.getElementById('loadingMessage').style.display = 'none';
+          // if (message.includes("first_chunk")) {
+            messageElement = document.createElement("div");
+            messageElement.innerHTML =
+              `<div class="bot-message" id=${messages_count}> ${message}` + "</div>";
+          // }
+          // else {
+            // existing_message = document.getElementById(messages_count);
+            // existing_message.innerHTML = messageElement.innerHTML + message;
+          // }
+        }
+        chatContainer.appendChild(messageElement);
+      }
+
+      // Add click event listener to the send button
+      document
+        .getElementById("submitButton")
+        .addEventListener("click", sendMessage);
+      document.getElementById('logoutButton').addEventListener('click', logout);
+      document.getElementById("userInput").addEventListener("keyup", function(event) {
+        // Check if the key pressed is Enter (key code 13)
+        if (event.keyCode === 13) {
+          // Trigger a click event on the button
+          document.getElementById("submitButton").click();
+        }
+      })
+    </script>
+  </body>
+</html>
